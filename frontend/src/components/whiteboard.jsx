@@ -1,81 +1,86 @@
+
 import React, { useRef, useEffect, useState } from "react";
-
 import { io } from "socket.io-client";
-
-const socket = io("http://localhost:5000"); 
 import { useParams } from 'react-router-dom';
 import ResizeAlert from "./resize";
+import WebRTCApp from "./vid";
+
+const socket = io("http://localhost:5000");
 
 const CanvasBoard = () => {
-  const { userId } = useParams();
+  const { userId, room } = useParams();
   const canvasRef = useRef(null);
-  const isDrawingRef = useRef(false); 
+  const isDrawingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
+  const colorRef = useRef("#000000");
+  const sizeref = useRef(4);
+
   const [lines, setLines] = useState([]);
-  const [input,setInput] = useState('')
-  const [mssg,setMssg] = useState([
-
-  ])
-  const colorRef = useRef("#000000")
-  const sizeref = useRef(4)
-
+  const [input, setInput] = useState('');
+  const [mssg, setMssg] = useState([]);
+  const [ai, setAi] = useState([]);
+  const [chat, setChat] = useState(true);
   const [color, setColor] = useState("#000000");
   const [brushSize, setBrushSize] = useState(4);
+  const [alert, setAlert] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [alert,setAlert] = useState(false)
-  
+  const handleRequest = async (input) => {
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/ai-req", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input }),
+      });
+      const data = await res.json();
+      console.log(data['output']);
 
-  useEffect(()=>{
-    colorRef.current = color
-    sizeref.current=brushSize
-  },[color,brushSize])
+      setAi((prevAi) => {
+        const updated = [...prevAi];
+        updated[updated.length - 1].output = data.output;
+        return updated;
+      });
+    } catch (err) {
+      console.error("Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-  const canvas = canvasRef.current;
-  const ctx = canvas.getContext("2d");
+    colorRef.current = color;
+    sizeref.current = brushSize;
+  }, [color, brushSize]);
 
-  const resizeCanvas = () => {
-    // Save current drawing
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const handleAi = () => setChat((a) => !a);
 
-    // Update canvas size
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
 
-    // Fill background again
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const resizeCanvas = () => {
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.putImageData(imgData, 0, 0);
+    };
 
-    // Restore previous drawing
-    ctx.putImageData(imgData, 0, 0);
-  };
-
-  // Initial setup
-  resizeCanvas();
-
-  // Listen for resize
-  window.addEventListener("resize", resizeCanvas);
-
-  return () => {
-    window.removeEventListener("resize", resizeCanvas);
-  };
-}, []);
-
-
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+    return () => window.removeEventListener("resize", resizeCanvas);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     const ctx = canvas.getContext("2d");
-    // ctx.lineCap = "round";
-    // ctx.lineWidth = 2;
-    // ctx.strokeStyle = "#000000";
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    
-    // FIXED: Better coordinate calculation for tablets
     const getMousePos = (e) => {
       const rect = canvas.getBoundingClientRect();
       return {
@@ -85,73 +90,50 @@ const CanvasBoard = () => {
     };
 
     const handleMouseDown = (e) => {
-      e.preventDefault(); // ADDED: Prevent default behavior
+      e.preventDefault();
       isDrawingRef.current = true;
       lastPosRef.current = getMousePos(e);
     };
 
     const handleMouseMove = (e) => {
-      e.preventDefault(); // ADDED: Prevent default behavior
+      e.preventDefault();
       if (!isDrawingRef.current) return;
-      const ctx = canvas.getContext("2d");
       const currentPos = getMousePos(e);
       const { x, y } = lastPosRef.current;
-
       ctx.lineCap = "round";
       ctx.lineWidth = sizeref.current;
       ctx.strokeStyle = colorRef.current;
-
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(currentPos.x, currentPos.y);
       ctx.stroke();
-
       socket.emit("draw_line", {
         from: { x, y },
         to: currentPos,
-        color:colorRef.current,
-        brushSize:sizeref.current,
-    });
-
+        color: colorRef.current,
+        brushSize: sizeref.current,
+      });
       lastPosRef.current = currentPos;
     };
 
     const handleMouseUp = (e) => {
-      e.preventDefault(); // ADDED: Prevent default behavior
+      e.preventDefault();
       isDrawingRef.current = false;
     };
-    console.log(mssg)
-    socket.on("draw_line", ({ from, to, color, brushSize }) => {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
-        console.log(from,color)
-        ctx.strokeStyle = color;
-        ctx.lineWidth = brushSize;
-        ctx.lineCap = "round";
 
-        ctx.beginPath();
-        ctx.moveTo(from.x, from.y);
-        ctx.lineTo(to.x, to.y);
-        ctx.stroke();
+    socket.on("draw_line", ({ from, to, color, brushSize }) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = brushSize;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
     });
 
-    socket.on("recvmsg",(
-        msg
-    )=>{
+    socket.on("recvmsg", (msg) => setMssg((a) => [...a, msg]));
+    socket.on("alert", ({ alert }) => alert && setAlert(true));
 
-        
-        setMssg((a)=>[...a,msg])
-    })
-
-    socket.on("alert",({alert})=>{
-      console.log(alert)
-      if(alert){
-        setAlert(alert)
-      }
-    })
-
-
-    // CHANGED: Added { passive: false } for preventDefault to work
     canvas.addEventListener("pointerdown", handleMouseDown, { passive: false });
     canvas.addEventListener("pointermove", handleMouseMove, { passive: false });
     canvas.addEventListener("pointerup", handleMouseUp, { passive: false });
@@ -165,54 +147,47 @@ const CanvasBoard = () => {
     };
   }, []);
 
-  const handleChange=()=>{
-    console.log("anala",input)
-    const now = new Date();
-    let hours = now.getHours();
-    let minutes = now.getMinutes();
-
-    const msg={
-        name:userId,
-        msg:input,
-        time:`${hours}:${minutes}`
+  const handleChange = () => {
+    if (chat) {
+      const now = new Date();
+      const msg = {
+        name: userId,
+        msg: input,
+        time: `${now.getHours()}:${now.getMinutes()}`,
+      };
+      setMssg((prevmsg) => [...prevmsg, msg]);
+      socket.emit("sendmsg", msg);
+      setInput('');
+    } else {
+      setAi((a) => [...a, { input, output: '' }]);
+      handleRequest(input);
+      setInput('');
     }
-    
+  };
 
-    setMssg((prevmsg)=>[...prevmsg,msg])
-    // console.log(mssg)
-    socket.emit("sendmsg",msg)
-    setInput('')
-  }
-
-  const clear=()=>{
-    const canvas=canvasRef.current
-    const a = canvas.getContext("2d")
-    a.clearRect(0,0,canvas.width,canvas.height)
-    a.fillStyle="#ffffff"
+  const clear = () => {
+    const canvas = canvasRef.current;
+    const a = canvas.getContext("2d");
+    a.clearRect(0, 0, canvas.width, canvas.height);
+    a.fillStyle = "#ffffff";
     a.fillRect(0, 0, canvas.width, canvas.height);
-    
-    setAlert(false)
-  }
+    setAlert(false);
+  };
 
-  const hand=()=>{
-    socket.emit("clear",{alert:true})
-  }
+  const hand = () => socket.emit("clear", { alert: true });
 
   return (
-<div className="relative w-full h-screen bg-gray-50">
-  <canvas
-    ref={canvasRef}
-    className="w-full h-full border-2 border-gray-200 bg-white cursor-crosshair rounded-lg shadow-sm"
-    style={{ touchAction: 'none' }} // ADDED: Prevent touch scrolling/zooming
-  />
+    <div className="relative w-full h-screen bg-gray-50">
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full border-2 border-gray-200 bg-white cursor-crosshair rounded-lg shadow-sm"
+        style={{ touchAction: 'none' }}
+      />
 
-  <div>
-      <ResizeAlert/>
-  </div>
-  
-  {/* Drawing Controls */}
-  <div className="absolute top-4 left-4 flex gap-4 items-center bg-white p-4 rounded-xl shadow-lg border border-gray-100">
-    <div className="flex items-center gap-2">
+      <ResizeAlert />
+
+      <div className="absolute top-4 left-4 flex gap-4 items-center bg-white p-4 rounded-xl shadow-lg border">
+        <div className="flex items-center gap-2">
       <label className="text-sm font-medium text-gray-700">Color:</label>
       <input
         type="color"
@@ -222,114 +197,68 @@ const CanvasBoard = () => {
       />
     </div>
 
-    
-    
-    <div className="flex items-center gap-2">
-      <label className="text-sm font-medium text-gray-700">Size:</label>
-      <input
-        type="range"
-        min="1"
-        max="20"
-        value={brushSize}
-        onChange={(e) => setBrushSize(parseInt(e.target.value))}
-        className="w-32 accent-blue-500"
-      />
-      <span className="text-sm text-gray-600 min-w-[2rem]">{brushSize}px</span>
-    </div>
-    
-    <button
-      onClick={()=>{clear(),hand()}}
-      className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 shadow-sm"
-    >
-      Clear
-    </button>
-  </div>
+        <label>Size:</label>
+        <input type="range" min="1" max="20" value={brushSize} onChange={(e) => setBrushSize(parseInt(e.target.value))} />
 
-  {/* Chat Panel */}
-  <div className="absolute right-4 top-4 bg-white w-80 h-[calc(100vh-2rem)] flex flex-col rounded-xl shadow-lg border border-gray-200">
-    
-    {/* Chat Header */}
-    <div className="bg-gray-800 text-white p-4 rounded-t-xl">
-      <h3 className="font-semibold text-lg">Chat</h3>
-    </div>
+        <button onClick={() => { clear(); hand(); }} className="bg-red-500 text-white px-4 py-2 rounded">Clear</button>
+      </div>
 
-    <div className="rounded-lg px-4 py-3 mb-3">
-      <div className="flex items-center justify-center space-x-2">
-        <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
-        <span className="text-gray-600 text-sm font-medium">
+      <div className="absolute top-20 w-[25%]">
+        <WebRTCApp room={room} />
+      </div>
+
+      <button onClick={handleAi} className="absolute top-6 right-6 bg-gray-600 text-white p-2 rounded-xl z-50">Chat / AI</button>
+
+      <div className="absolute right-4 top-4 bg-white w-80 h-[calc(100vh-2rem)] flex flex-col rounded-xl shadow-lg border">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-center space-x-2">
+            <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
+            <span className="text-gray-600 text-sm font-medium">
           Welcome <span className="text-gray-800 font-semibold">{userId}</span>
         </span>
-      </div>
-    </div>
-    
-    {/* Messages Area */}
-    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-      {mssg.map((a, id) => (
-        <div key={id} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-          <div className="flex justify-between items-start mb-1">
-            <span className="font-semibold text-blue-600 text-sm">{a.name}</span>
-            <span className="text-xs text-gray-500">{a.time}</span>
           </div>
-          <p className="text-gray-800 text-sm">{a.msg}</p>
         </div>
-      ))}
-    </div>
-    
-    {/* Input Area */}
-    <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-      <div className="flex gap-2">
-        <input 
-          placeholder="Type your message..." 
-          className="flex-1 rounded-lg p-3 border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" 
-          onChange={(a) => setInput(a.target.value)}
-          value={input}
-        />
-        <button 
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200" 
-          onClick={handleChange}
-        >
-          Send
-        </button>
-      </div>
-    </div>
-  </div>
 
-  {/* Modal Alert - Centered with Backdrop */}
-  {alert && (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-100">
-        <div className="text-center">
-          <div className="mb-6">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-              <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {chat ? mssg.map((a, id) => (
+            <div key={id} className="bg-gray-50 rounded-lg p-3 border">
+              <div className="flex justify-between items-start">
+                <span className="text-sm font-semibold text-blue-600">{a.name}</span>
+                <span className="text-xs text-gray-500">{a.time}</span>
+              </div>
+              <p className="text-sm text-gray-800">{a.msg}</p>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Clear Drawing Board</h3>
-            <p className="text-gray-600">
-              Your friend wants to clear the board. Do you wish to proceed?
-            </p>
-          </div>
-          
-          <div className="flex gap-3 justify-center">
-            <button 
-              onClick={clear}
-              className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
-            >
-              Yes, Clear
-            </button>
-            <button 
-              onClick={() => setAlert(false)}
-              className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-2 rounded-lg font-medium transition-colors duration-200"
-            >
-              Cancel
-            </button>
+          )) : ai.map((a, id) => (
+            <div key={id} className="bg-gray-50 rounded-lg p-3 border">
+              <p className="text-purple-700 text-sm font-semibold">You</p>
+              <p className="text-sm text-gray-800 mb-2">{a.input}</p>
+              <p className="text-green-700 text-sm font-semibold">AI</p>
+              <p className="text-sm text-gray-800">{a.output || (loading && id === ai.length - 1 ? "Thinking..." : "")}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="p-4 border-t">
+          <div className="flex gap-2">
+            <input className="flex-1 border rounded p-2" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type your message..." />
+            <button onClick={handleChange} className="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
           </div>
         </div>
       </div>
+
+      {alert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold">Clear Drawing Board</h3>
+            <p>Your friend wants to clear the board. Do you wish to proceed?</p>
+            <div className="flex gap-4 mt-4 justify-end">
+              <button onClick={clear} className="bg-red-500 text-white px-4 py-2 rounded">Yes, Clear</button>
+              <button onClick={() => setAlert(false)} className="bg-gray-300 text-gray-800 px-4 py-2 rounded">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )}
-</div>
   );
 };
 
