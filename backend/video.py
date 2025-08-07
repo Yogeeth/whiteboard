@@ -13,18 +13,18 @@ def index():
 
 @socketio.on("connect")
 def on_connect():
-    print("Anala connected")
+    print("User connected")
 
 @socketio.on("disconnect")
 def on_disconnect():
-    print("Anala disconnected")
+    print("User disconnected")
 
 @socketio.on("join-room")
 def handle_join(data):
     room = data.get("room")
     if room:
         join_room(room)
-        print(f"Anala joined room: {room}")
+        print(f"User joined room: {room}")
 
 @socketio.on("offer")
 def handle_offer(data):

@@ -16,21 +16,11 @@ def index():
 @app.route('/api/ai-req', methods=['POST'])
 def answer():
     data = request.get_json()
-    
-    
-    genai.configure(api_key=api)
-
+    genai.configure(api_key="API_KEY")
     gemini = genai.GenerativeModel("gemini-1.5-flash")
-
-    print("Sending req to Gemini:", data)
-    
-    # Send input to Gemini
-    response = gemini.generate_content(data.get('input'))
-    
+    print("Sending req to Gemini:", data) 
+    response = gemini.generate_content(data.get('input')) 
     output_text = response.text.replace("*", "")
-    
-    print("Output:", output_text)
-
     return jsonify({
         "output": output_text
     })
@@ -39,11 +29,11 @@ def answer():
 
 @socketio.on("connect")
 def handle_connect():
-    print("Anala connected")
+    print("User connected")
 
 @socketio.on("disconnect")
 def handle_disconnect():
-    print("Anala disconnected")
+    print("User disconnected")
 
 @socketio.on("draw_line")
 def handle_draw(data):
@@ -52,12 +42,10 @@ def handle_draw(data):
 
 @socketio.on("sendmsg")
 def handle_msg(data):
-    print("anala",data)
     emit("recvmsg",data,broadcast=True,include_self=False)
 
 @socketio.on("clear")
 def handle_clear(data):
-    print(data)
     emit('alert',data,broadcast=True,include_self=False)
 
 if __name__ == "__main__":
