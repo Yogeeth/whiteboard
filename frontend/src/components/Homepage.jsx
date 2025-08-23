@@ -13,7 +13,7 @@ const WhiteboardHomepage = () => {
     navigare('video')
   }
 
-  const [moadl,setModal] = useState(true)
+  const [moadl,setModal] = useState(false)
 
   const handleCLose = (a)=>{
     setModal(a)
