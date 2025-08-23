@@ -185,6 +185,7 @@ const ManualWebRTCApp = () => {
               </button>
           </div>
           <div className="relative">
+            <p>Hover👇</p>
             <textarea
               className="w-full p-2 pr-20 border rounded resize-none blur-2xl hover:blur-none focus:blur-none transition-all duration-200"
               rows="6"
@@ -221,6 +222,7 @@ const ManualWebRTCApp = () => {
               </button>
           </div>
           <div className="relative">
+            <p>Hover👇</p>
             <textarea
               className="w-full p-2 pr-20 border rounded resize-none blur-2xl hover:blur-none focus:blur-none transition-all duration-200"
               rows="6"
