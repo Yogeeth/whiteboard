@@ -2,10 +2,10 @@ import React from 'react'
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
-import CanvasBoard from './components/whiteboard'
-import WebRTCAppAutomated from './components/vid'
-import ManualWebRTCApp from './components/video'
-import WhiteboardHomepage from './components/Homepage'
+import CanvasBoard from './pages/whiteboard'
+import WebRTCAppAutomated from './pages/vid'
+import ManualWebRTCApp from './pages/video'
+import WhiteboardHomepage from './pages/Homepage'
 export default function App() {
   return (
     <Router>
