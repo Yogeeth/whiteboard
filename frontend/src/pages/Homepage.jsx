@@ -12,13 +12,10 @@ const WhiteboardHomepage = () => {
   const handleManual = ()=>{
     navigare('video')
   }
-
   const [moadl,setModal] = useState(false)
-
   const handleCLose = (a)=>{
     setModal(a)
   }
-
   useEffect(() => {
     setIsVisible(true);
     const interval = setInterval(() => {
@@ -95,10 +92,7 @@ const WhiteboardHomepage = () => {
               Launch Whiteboard
               <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
-            <button className="group border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-neutral-900 px-8 py-4 rounded-full font-semibold text-lg transition-all duration-300 flex items-center shadow-lg shadow-cyan-500/25">
-              <Video className="mr-2 w-5 h-5" />
-              WebRTC Demo
-            </button>
+            
           </div>
         </div>
 
