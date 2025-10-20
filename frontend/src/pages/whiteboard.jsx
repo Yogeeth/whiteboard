@@ -7,7 +7,7 @@ import WebRTCAppAutomated from "./AutomatedWebRTCConnection";
 const socket = io("http://localhost:5000");
 
 const CanvasBoard = () => {
-  const { userId, room } = useParams();
+  const { userId,room,roomName } = useParams();
 
   const canvasRef = useRef(null);
   const isDrawingRef = useRef(false);
@@ -250,7 +250,7 @@ const CanvasBoard = () => {
           <div className="flex items-center justify-center space-x-2">
             <div className="w-3 h-3 bg-green-600 rounded-full animate-pulse"></div>
             <span className="text-gray-600 text-sm font-medium">
-              Welcome <span className="text-gray-800 font-bold">{userId}</span> - <span className="text-purple-600 font-bold">{room}</span>
+              Welcome <span className="text-gray-800 font-bold">{userId}</span> to <span className="text-purple-600 font-bold">{roomName}</span>
             </span>
           </div>
         </div>

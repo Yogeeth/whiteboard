@@ -76,13 +76,13 @@ export default function Modal() {
     try {
       let response;
       if (isCreate) {
-        response = await fetch("http://127.0.0.1:8000/create_room", {
+        response = await fetch("http://127.0.0.1:5000/create_room", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(createRoom),
         });
       } else {
-        response = await fetch("http://127.0.0.1:8000/join_room", {
+        response = await fetch("http://127.0.0.1:5000/join_room", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(joinRoom),

@@ -38,7 +38,7 @@ const WebRTCAppAutomated = ({ room = "room" }) => {
   useEffect(() => {
     if (!localStream) return;
 
-    socketRef.current = io("http://localhost:5001");
+    socketRef.current = io("http://localhost:5000");
     socketRef.current.emit("join-room", { room });
 
     socketRef.current.on("offer", async (offer) => {
